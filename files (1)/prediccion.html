@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Modelo de Predicción - Basketball Analytics</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #f4f4f4; color: #1a1a1a; }
+
+  .header {
+    background: #fff; border-bottom: 1px solid #e8e8e8;
+    padding: 16px 32px; display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 10; flex-wrap: wrap; gap: 10px;
+  }
+  .logo { font-size: 20px; font-weight: 700; text-decoration: none; color: #1a1a1a; }
+  .logo .b { color: #1a7a4a; }
+  .nav a {
+    padding: 7px 14px; font-size: 13px; border: 1px solid #e0e0e0;
+    border-radius: 8px; text-decoration: none; color: #555; margin-left: 6px;
+  }
+  .nav a:hover { background: #f5f5f5; }
+  .nav a.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+
+  .page { max-width: 900px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  .page-header { margin-bottom: 32px; }
+  .page-header .badge {
+    display: inline-block; font-size: 11px; font-weight: 600;
+    padding: 4px 12px; border-radius: 999px;
+    background: #e8fdf0; color: #1a7a4a; border: 1px solid #c0ddca;
+    margin-bottom: 12px; letter-spacing: 0.3px; text-transform: uppercase;
+  }
+  .page-header h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.4px; margin-bottom: 10px; }
+  .page-header p { font-size: 15px; color: #666; line-height: 1.7; max-width: 640px; }
+
+  .license-box {
+    background: #fff; border: 1px solid #e8e8e8; border-radius: 10px;
+    padding: 14px 18px; margin-bottom: 28px;
+    display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap;
+  }
+  .license-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+  .license-text { font-size: 13px; color: #555; line-height: 1.6; flex: 1; }
+  .license-text strong { color: #1a1a1a; }
+  .license-text a { color: #1a7a4a; text-decoration: none; font-weight: 500; }
+  .license-text a:hover { text-decoration: underline; }
+
+  .form-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;
+  }
+  @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: #fff; border: 1px solid #e8e8e8; border-radius: 12px; padding: 22px;
+  }
+  .card h2 {
+    font-size: 14px; font-weight: 600; color: #1a1a1a;
+    margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card h2 .dot { width: 8px; height: 8px; border-radius: 50%; background: #1a7a4a; }
+
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 12px; color: #888; margin-bottom: 4px; font-weight: 500; }
+  .field input, .field select {
+    width: 100%; padding: 8px 10px; font-size: 13px; font-family: inherit;
+    border: 1px solid #ddd; border-radius: 7px; outline: none; color: #1a1a1a; background: #fff;
+  }
+  .field input:focus, .field select:focus { border-color: #1a7a4a; }
+  .field .hint { font-size: 11px; color: #bbb; margin-top: 3px; }
+
+  .submit-area { text-align: center; margin: 28px 0; }
+  .btn-predict {
+    padding: 14px 48px; font-size: 15px; font-weight: 600; font-family: inherit;
+    background: #1a1a1a; color: #fff; border: none; border-radius: 10px;
+    cursor: pointer; transition: background 0.15s;
+  }
+  .btn-predict:hover { background: #333; }
+  .btn-predict:disabled { background: #ccc; cursor: not-allowed; }
+
+  .hint-fields {
+    font-size: 12px; color: #aaa; text-align: center; margin-top: 8px;
+  }
+
+  /* Resultados */
+  #results { display: none; }
+  .results-header {
+    font-size: 18px; font-weight: 700; margin-bottom: 20px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .results-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  @media (max-width: 600px) { .results-grid { grid-template-columns: 1fr; } }
+
+  .result-card {
+    background: #fff; border: 1px solid #e8e8e8; border-radius: 10px;
+    padding: 16px 18px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .result-name { font-size: 13px; color: #666; }
+  .result-val { font-size: 22px; font-weight: 700; color: #1a7a4a; }
+
+  .similares-card {
+    background: #fff; border: 1px solid #e8e8e8; border-radius: 12px; padding: 22px;
+  }
+  .similares-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 16px; }
+  .sim-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0; border-bottom: 1px solid #f5f5f5; gap: 12px;
+  }
+  .sim-row:last-child { border-bottom: none; }
+  .sim-rank { font-size: 12px; font-weight: 700; color: #1a7a4a; width: 20px; }
+  .sim-name { font-size: 14px; font-weight: 500; flex: 1; }
+  .sim-season { font-size: 12px; color: #aaa; }
+  .sim-dist {
+    font-size: 12px; padding: 3px 8px; border-radius: 999px;
+    background: #f0f0f0; color: #666;
+  }
+
+  .error-box {
+    background: #fff0f0; border: 1px solid #f5a0a0; border-radius: 10px;
+    padding: 16px 20px; color: #c0392b; font-size: 14px; display: none;
+  }
+
+  .loading { text-align: center; padding: 40px; display: none; }
+  .spinner {
+    width: 36px; height: 36px; border: 3px solid #e8e8e8;
+    border-top-color: #1a7a4a; border-radius: 50%;
+    animation: spin 0.8s linear infinite; margin: 0 auto 12px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .api-warning {
+    background: #fffbe6; border: 1px solid #ffe58f; border-radius: 10px;
+    padding: 14px 18px; margin-bottom: 24px; font-size: 13px; color: #856404;
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <a href="index.html" class="logo"><span class="b">B</span>A Basketball Analytics</a>
+  <nav class="nav">
+    <a href="diccionario.html">Diccionario</a>
+    <a href="pizarra-tactica.html">Pizarra</a>
+    <a href="prediccion.html" class="active">Predicción</a>
+    <a href="#">Comunidad</a>
+  </nav>
+</header>
+
+<div class="page">
+  <div class="page-header">
+    <div class="badge">Modelo NBA → ACB · V1.6</div>
+    <h1>Modelo de Predicción de Rendimiento</h1>
+    <p>Introduce las estadísticas de un jugador en la NBA y el modelo predecirá su rendimiento esperado si ficha por la ACB. Cuantas más estadísticas rellenes, mejor será la predicción.</p>
+  </div>
+
+  <div class="license-box">
+    <div class="license-icon">©</div>
+    <div class="license-text">
+      <strong>Licencia de uso libre con atribución (CC BY 4.0).</strong> Puedes usar este modelo de forma gratuita siempre que cites al autor: <strong>Iván Seijo</strong>.
+      Código fuente disponible en <a href="https://github.com/IvanSeijo/Model-for-performance-prediction-of-players-coming-into-ACB-league-from-NBA-league" target="_blank">GitHub →</a>
+    </div>
+  </div>
+
+  <div class="api-warning" id="api-warning">
+    ⚠️ El servidor del modelo no está configurado todavía. Configura la URL de la API en el código para activar las predicciones.
+  </div>
+
+  <!-- Formulario -->
+  <form id="form" onsubmit="return false;">
+
+    <!-- Fila superior: posición y altura -->
+    <div class="form-grid">
+      <div class="card">
+        <h2><div class="dot"></div> Datos del jugador</h2>
+        <div class="field">
+          <label>Posición en NBA</label>
+          <select id="posicion_nba">
+            <option value="G">G — Guard (Base / Escolta)</option>
+            <option value="F" selected>F — Forward (Alero)</option>
+            <option value="C">C — Center (Pívot)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Posición esperada en ACB</label>
+          <select id="posicion_acb">
+            <option value="Base">Base</option>
+            <option value="Escolta">Escolta</option>
+            <option value="Alero" selected>Alero</option>
+            <option value="Ala-pívot">Ala-pívot</option>
+            <option value="Pívot">Pívot</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Altura (metros)</label>
+          <input type="number" id="altura_metros" step="0.01" min="1.50" max="2.30" placeholder="ej: 2.03" value="2.00">
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><div class="dot"></div> Producción ofensiva</h2>
+        <div class="field"><label>Puntos por partido</label><input type="number" id="points" step="0.1" placeholder="ej: 12.5"><div class="hint">Dejar vacío = usar media del dataset</div></div>
+        <div class="field"><label>Asistencias por partido</label><input type="number" id="assists" step="0.1" placeholder="ej: 3.2"></div>
+        <div class="field"><label>Minutos por partido</label><input type="number" id="minutos" step="0.1" placeholder="ej: 28.0"></div>
+      </div>
+    </div>
+
+    <!-- Tiros -->
+    <div class="form-grid">
+      <div class="card">
+        <h2><div class="dot"></div> Tiros de campo</h2>
+        <div class="field"><label>Anotados (FGM)</label><input type="number" id="fieldGoalsMade" step="0.1" placeholder="ej: 4.2"></div>
+        <div class="field"><label>Intentados (FGA)</label><input type="number" id="fieldGoalsAttempted" step="0.1" placeholder="ej: 9.1"></div>
+        <div class="field"><label>Porcentaje FG% (0-1)</label><input type="number" id="fieldGoalsPercentage" step="0.001" min="0" max="1" placeholder="ej: 0.46"></div>
+        <div class="field"><label>eFG% (0-1)</label><input type="number" id="effectiveFieldGoalPercentage" step="0.001" min="0" max="1" placeholder="ej: 0.50"></div>
+        <div class="field"><label>TS% (0-1)</label><input type="number" id="trueShootingPercentage" step="0.001" min="0" max="1" placeholder="ej: 0.545"></div>
+      </div>
+
+      <div class="card">
+        <h2><div class="dot"></div> Triples y tiros libres</h2>
+        <div class="field"><label>Triples anotados (3PM)</label><input type="number" id="threePointersMade" step="0.1" placeholder="ej: 1.2"></div>
+        <div class="field"><label>Triples intentados (3PA)</label><input type="number" id="threePointersAttempted" step="0.1" placeholder="ej: 3.5"></div>
+        <div class="field"><label>3P% (0-1)</label><input type="number" id="threePointersPercentage" step="0.001" min="0" max="1" placeholder="ej: 0.36"></div>
+        <div class="field"><label>Tiros libres anotados (FTM)</label><input type="number" id="freeThrowsMade" step="0.1" placeholder="ej: 2.1"></div>
+        <div class="field"><label>Tiros libres intentados (FTA)</label><input type="number" id="freeThrowsAttempted" step="0.1" placeholder="ej: 2.8"></div>
+        <div class="field"><label>FT% (0-1)</label><input type="number" id="freeThrowsPercentage" step="0.001" min="0" max="1" placeholder="ej: 0.78"></div>
+      </div>
+    </div>
+
+    <!-- Rebotes y defensa -->
+    <div class="form-grid">
+      <div class="card">
+        <h2><div class="dot"></div> Rebotes</h2>
+        <div class="field"><label>Rebotes totales</label><input type="number" id="reboundsTotal" step="0.1" placeholder="ej: 5.2"></div>
+        <div class="field"><label>Rebotes ofensivos</label><input type="number" id="reboundsOffensive" step="0.1" placeholder="ej: 1.1"></div>
+        <div class="field"><label>Rebotes defensivos</label><input type="number" id="reboundsDefensive" step="0.1" placeholder="ej: 4.1"></div>
+        <div class="field"><label>ORB% (0-1)</label><input type="number" id="offensiveReboundPercentage" step="0.001" min="0" max="1" placeholder="ej: 0.07"></div>
+        <div class="field"><label>DRB% (0-1)</label><input type="number" id="defensiveReboundPercentage" step="0.001" min="0" max="1" placeholder="ej: 0.19"></div>
+      </div>
+
+      <div class="card">
+        <h2><div class="dot"></div> Defensa y otros</h2>
+        <div class="field"><label>Robos (STL)</label><input type="number" id="steals" step="0.1" placeholder="ej: 0.8"></div>
+        <div class="field"><label>Tapones (BLK)</label><input type="number" id="blocks" step="0.1" placeholder="ej: 0.5"></div>
+        <div class="field"><label>Pérdidas (TOV)</label><input type="number" id="turnovers" step="0.1" placeholder="ej: 1.2"></div>
+        <div class="field"><label>Faltas personales</label><input type="number" id="foulsPersonal" step="0.1" placeholder="ej: 2.1"></div>
+        <div class="field"><label>+/- (Plus/Minus)</label><input type="number" id="plusMinusPoints" step="0.1" placeholder="ej: 3.5"></div>
+      </div>
+    </div>
+
+    <!-- Avanzadas -->
+    <div class="card" style="margin-bottom: 20px;">
+      <h2><div class="dot"></div> Estadísticas avanzadas</h2>
+      <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap:12px;">
+        <div class="field"><label>USG% (0-1)</label><input type="number" id="usagePercentage" step="0.001" min="0" max="1" placeholder="ej: 0.22"></div>
+        <div class="field"><label>AST% (0-1)</label><input type="number" id="assistPercentage" step="0.001" min="0" max="1" placeholder="ej: 0.18"></div>
+        <div class="field"><label>PIE</label><input type="number" id="playerImpactEstimate" step="0.1" placeholder="ej: 9.5"></div>
+        <div class="field"><label>AST/TO ratio</label><input type="number" id="assistToTurnoverRatio" step="0.1" placeholder="ej: 2.1"></div>
+        <div class="field"><label>Offensive Rating</label><input type="number" id="offensiveRating" step="0.1" placeholder="ej: 112.0"></div>
+        <div class="field"><label>Defensive Rating</label><input type="number" id="defensiveRating" step="0.1" placeholder="ej: 110.0"></div>
+        <div class="field"><label>Net Rating</label><input type="number" id="netRating" step="0.1" placeholder="ej: 2.0"></div>
+      </div>
+    </div>
+
+    <div class="submit-area">
+      <button class="btn-predict" id="btn-predict" type="button" onclick="predecir()">Predecir rendimiento ACB</button>
+      <div class="hint-fields">Los campos vacíos se sustituyen por la media del dataset</div>
+    </div>
+  </form>
+
+  <div class="error-box" id="error-box"></div>
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <div style="font-size:14px;color:#888;">Calculando predicción...</div>
+  </div>
+
+  <!-- Resultados -->
+  <div id="results">
+    <div class="results-header">
+      Predicción de estadísticas ACB
+      <span style="font-size:13px;font-weight:400;color:#aaa;">por partido</span>
+    </div>
+    <div class="results-grid" id="results-grid"></div>
+
+    <div class="similares-card">
+      <h3>Jugadores más similares en el dataset</h3>
+      <div id="similares-list"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ⚠️ Sustituye esta URL por la de tu API en Render cuando la tengas configurada
+const API_URL = 'TU_API_URL_RENDER';
+
+function getVal(id) {
+  const v = document.getElementById(id).value;
+  return v === '' ? null : parseFloat(v);
+}
+function getStr(id) {
+  return document.getElementById(id).value;
+}
+
+async function predecir() {
+  const apiUrl = API_URL;
+  if (apiUrl === 'TU_API_URL_RENDER') {
+    document.getElementById('api-warning').style.display = 'block';
+    return;
+  }
+
+  document.getElementById('error-box').style.display = 'none';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('btn-predict').disabled = true;
+
+  const body = {
+    posicion_nba:  getStr('posicion_nba'),
+    altura_metros: parseFloat(document.getElementById('altura_metros').value) || 2.00,
+    posicion_acb:  getStr('posicion_acb'),
+    points: getVal('points'), assists: getVal('assists'), minutos: getVal('minutos'),
+    fieldGoalsMade: getVal('fieldGoalsMade'), fieldGoalsAttempted: getVal('fieldGoalsAttempted'),
+    fieldGoalsPercentage: getVal('fieldGoalsPercentage'),
+    effectiveFieldGoalPercentage: getVal('effectiveFieldGoalPercentage'),
+    trueShootingPercentage: getVal('trueShootingPercentage'),
+    threePointersMade: getVal('threePointersMade'), threePointersAttempted: getVal('threePointersAttempted'),
+    threePointersPercentage: getVal('threePointersPercentage'),
+    freeThrowsMade: getVal('freeThrowsMade'), freeThrowsAttempted: getVal('freeThrowsAttempted'),
+    freeThrowsPercentage: getVal('freeThrowsPercentage'),
+    reboundsTotal: getVal('reboundsTotal'), reboundsOffensive: getVal('reboundsOffensive'),
+    reboundsDefensive: getVal('reboundsDefensive'),
+    offensiveReboundPercentage: getVal('offensiveReboundPercentage'),
+    defensiveReboundPercentage: getVal('defensiveReboundPercentage'),
+    steals: getVal('steals'), blocks: getVal('blocks'), turnovers: getVal('turnovers'),
+    foulsPersonal: getVal('foulsPersonal'), plusMinusPoints: getVal('plusMinusPoints'),
+    usagePercentage: getVal('usagePercentage'), assistPercentage: getVal('assistPercentage'),
+    playerImpactEstimate: getVal('playerImpactEstimate'), assistToTurnoverRatio: getVal('assistToTurnoverRatio'),
+    offensiveRating: getVal('offensiveRating'), defensiveRating: getVal('defensiveRating'),
+    netRating: getVal('netRating'),
+  };
+
+  try {
+    const res = await fetch(`${apiUrl}/predecir`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}`);
+    const data = await res.json();
+
+    // Mostrar predicciones
+    const grid = document.getElementById('results-grid');
+    grid.innerHTML = data.predicciones.map(p => `
+      <div class="result-card">
+        <div class="result-name">${p.estadistica}</div>
+        <div class="result-val">${p.valor}</div>
+      </div>
+    `).join('');
+
+    // Mostrar similares
+    const list = document.getElementById('similares-list');
+    list.innerHTML = data.similares.map((s, i) => `
+      <div class="sim-row">
+        <div class="sim-rank">${i+1}</div>
+        <div class="sim-name">${s.jugador}</div>
+        <div class="sim-season">${s.temporada}</div>
+        <div class="sim-dist">dist. ${s.distancia}</div>
+      </div>
+    `).join('');
+
+    document.getElementById('results').style.display = 'block';
+  } catch(e) {
+    document.getElementById('error-box').textContent = 'Error al conectar con el servidor. Comprueba que la API está activa.';
+    document.getElementById('error-box').style.display = 'block';
+  } finally {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('btn-predict').disabled = false;
+  }
+}
+</script>
+</body>
+</html>
